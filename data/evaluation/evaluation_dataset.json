@@ -1,0 +1,557 @@
+[
+  {
+    "question_id": "Q01",
+    "question": "What main research problem does the ConvLSTM paper address?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      1
+    ],
+    "reference_answer": "Precipitation nowcasting, formulated as a spatiotemporal sequence forecasting problem to predict future radar reflectivity maps.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 1"
+    ]
+  },
+  {
+    "question_id": "Q02",
+    "question": "How does ConvLSTM extend the traditional FC-LSTM architecture?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      3
+    ],
+    "reference_answer": "ConvLSTM replaces matrix multiplication operations in input-to-state and state-to-state transitions with 2D convolution operations.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 3"
+    ]
+  },
+  {
+    "question_id": "Q03",
+    "question": "What loss function is used to train the ConvLSTM model?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      3,
+      6
+    ],
+    "reference_answer": "Cross-entropy loss function over pixel-level radar reflectivity intensities.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 3"
+    ]
+  },
+  {
+    "question_id": "Q04",
+    "question": "What optical flow algorithm is used as a baseline in the paper?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      7
+    ],
+    "reference_answer": "ROVER (Real-time Optical flow Variation for Radar).",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 7"
+    ]
+  },
+  {
+    "question_id": "Q05",
+    "question": "How many radar images are collected in the Hong Kong radar dataset?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      7
+    ],
+    "reference_answer": "The dataset contains 10,000 radar reflectivity maps collected over Hong Kong from 2011 to 2013.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 7"
+    ]
+  },
+  {
+    "question_id": "Q06",
+    "question": "What is the spatial grid resolution of the radar reflectivity maps?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      7
+    ],
+    "reference_answer": "Original resolution is 480 x 480 grid, cropped to 100 x 100 or 480 x 480.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 7"
+    ]
+  },
+  {
+    "question_id": "Q07",
+    "question": "What is the main limitation of FC-LSTM for spatial sequence data?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      2
+    ],
+    "reference_answer": "FC-LSTM flattens 2D images into 1D vectors, failing to preserve spatial structure and local pixel correlations.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 2"
+    ]
+  },
+  {
+    "question_id": "Q08",
+    "question": "How are input tensors formatted in the ConvLSTM network?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      4
+    ],
+    "reference_answer": "Input tensors are formatted as 3D spatial tensors with dimensions (channels, height, width).",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 4"
+    ]
+  },
+  {
+    "question_id": "Q09",
+    "question": "What prediction lead time horizon is evaluated in the paper experiments?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "Predicting 5 to 15 future frames (nowcasting lead times up to 90 minutes).",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 8"
+    ]
+  },
+  {
+    "question_id": "Q10",
+    "question": "What main conclusion is drawn regarding ConvLSTM performance?",
+    "category": "text",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      11
+    ],
+    "reference_answer": "ConvLSTM consistently outperforms FC-LSTM and ROVER optical flow across all evaluation metrics.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, p. 11"
+    ]
+  },
+  {
+    "question_id": "Q11",
+    "question": "Which model achieves the lowest Rainfall-MSE score in Table 2?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "ConvLSTM(3x3) achieves the lowest Rainfall-MSE score of 1.420.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 8)"
+    ]
+  },
+  {
+    "question_id": "Q12",
+    "question": "What is the Rainfall-MSE reported for FC-LSTM-2000-2000 in Table 2?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "Rainfall-MSE for FC-LSTM-2000-2000 is 1.865.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 8)"
+    ]
+  },
+  {
+    "question_id": "Q13",
+    "question": "What is the Critical Success Index (CSI) score for ConvLSTM(3x3) in Table 2?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "Critical Success Index (CSI) is 0.577.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 8)"
+    ]
+  },
+  {
+    "question_id": "Q14",
+    "question": "What is the number of parameters reported for FC-LSTM-2048-2048 in Table 1?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      6
+    ],
+    "reference_answer": "FC-LSTM-2048-2048 has 142,667,776 parameters.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 6)"
+    ]
+  },
+  {
+    "question_id": "Q15",
+    "question": "What is the parameter count of ConvLSTM(5x5)-5x5-256 in Table 1?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      6
+    ],
+    "reference_answer": "ConvLSTM(5x5)-5x5-256 parameter count is 13,524,496.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 6)"
+    ]
+  },
+  {
+    "question_id": "Q16",
+    "question": "What is the alpha regularization parameter value for ROVER in Table 3?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      10
+    ],
+    "reference_answer": "Alpha regularization parameter value is 2000.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 10)"
+    ]
+  },
+  {
+    "question_id": "Q17",
+    "question": "What is the coarsest spatial scale level L_max in ROVER Table 3?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      10
+    ],
+    "reference_answer": "L_max parameter is 6.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 10)"
+    ]
+  },
+  {
+    "question_id": "Q18",
+    "question": "What correlation score is reported for ConvLSTM(3x3) in Table 2?",
+    "category": "table",
+    "expected_tools": [
+      "table_retriever"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "Correlation score is 0.908.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 8)"
+    ]
+  },
+  {
+    "question_id": "Q19",
+    "question": "What does Figure 1 illustrate regarding 2D image representations?",
+    "category": "figure",
+    "expected_tools": [
+      "figure_retriever",
+      "figure_vlm"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      4
+    ],
+    "reference_answer": "Figure 1 illustrates transforming 2D images into 3D tensors with channel dimensions.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Figure (p. 4)"
+    ]
+  },
+  {
+    "question_id": "Q20",
+    "question": "What network architecture is depicted in Figure 3?",
+    "category": "figure",
+    "expected_tools": [
+      "figure_retriever",
+      "figure_vlm"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      5
+    ],
+    "reference_answer": "Figure 3 depicts the encoding-forecasting ConvLSTM network architecture for precipitation nowcasting.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Figure (p. 5)"
+    ]
+  },
+  {
+    "question_id": "Q21",
+    "question": "What evaluation metrics are compared over time in Figure 5?",
+    "category": "figure",
+    "expected_tools": [
+      "figure_retriever",
+      "figure_vlm"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "Figure 5 plots Rainfall-MSE, CSI, FAR, and POD metrics over prediction time steps.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Figure (p. 8)"
+    ]
+  },
+  {
+    "question_id": "Q22",
+    "question": "What loss trend is shown in Figure 11 for ConvLSTM versus FC-LSTM?",
+    "category": "figure",
+    "expected_tools": [
+      "figure_retriever",
+      "figure_vlm"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      12
+    ],
+    "reference_answer": "Figure 11 shows that ConvLSTM training loss decreases faster and reaches a lower cross-entropy score than FC-LSTM.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Figure (p. 12)"
+    ]
+  },
+  {
+    "question_id": "Q23",
+    "question": "Compare the purpose of canonical_sample.pdf versus convlstm_precipitation_nowcasting.pdf.",
+    "category": "cross_paper",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "canonical_sample.pdf",
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      1
+    ],
+    "reference_answer": "canonical_sample.pdf is a 1-page Phase 1 ingestion test document, while convlstm_precipitation_nowcasting.pdf is the full 11-page arXiv paper.",
+    "reference_citations": [
+      "canonical_sample.pdf, p. 1",
+      "convlstm_precipitation_nowcasting.pdf, p. 1"
+    ]
+  },
+  {
+    "question_id": "Q24",
+    "question": "Which papers in the dataset reference precipitation nowcasting?",
+    "category": "cross_paper",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "canonical_sample.pdf",
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      1
+    ],
+    "reference_answer": "Both canonical_sample.pdf and convlstm_precipitation_nowcasting.pdf reference precipitation nowcasting.",
+    "reference_citations": [
+      "canonical_sample.pdf, p. 1",
+      "convlstm_precipitation_nowcasting.pdf, p. 1"
+    ]
+  },
+  {
+    "question_id": "Q25",
+    "question": "How is the ConvLSTM paper title formatted in canonical_sample.pdf?",
+    "category": "cross_paper",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "canonical_sample.pdf"
+    ],
+    "expected_pages": [
+      1
+    ],
+    "reference_answer": "Paper: Convolutional LSTM Network: A Machine Learning Approach for Precipitation Nowcasting.",
+    "reference_citations": [
+      "canonical_sample.pdf, p. 1"
+    ]
+  },
+  {
+    "question_id": "Q26",
+    "question": "Compare the document structure across all canonical papers in the dataset.",
+    "category": "cross_paper",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "canonical_sample.pdf",
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      1
+    ],
+    "reference_answer": "The dataset contains a 1-page synthetic test document and an 11-page arXiv research paper.",
+    "reference_citations": [
+      "canonical_sample.pdf, p. 1",
+      "convlstm_precipitation_nowcasting.pdf, p. 1"
+    ]
+  },
+  {
+    "question_id": "Q27",
+    "question": "What page counts exist across the documents in the papers repository?",
+    "category": "cross_paper",
+    "expected_tools": [
+      "text_retriever"
+    ],
+    "expected_documents": [
+      "canonical_sample.pdf",
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      1
+    ],
+    "reference_answer": "canonical_sample.pdf has 1 page and convlstm_precipitation_nowcasting.pdf has 11 pages.",
+    "reference_citations": [
+      "canonical_sample.pdf, p. 1",
+      "convlstm_precipitation_nowcasting.pdf, p. 1"
+    ]
+  },
+  {
+    "question_id": "Q28",
+    "question": "What is the percentage improvement from Rainfall-MSE 1.420 to 0.980?",
+    "category": "calculation",
+    "expected_tools": [
+      "calculator"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "30.9859% improvement.",
+    "reference_citations": [
+      "Calculation: ((1.42 - 0.98) / 1.42) * 100 = 30.9859"
+    ]
+  },
+  {
+    "question_id": "Q29",
+    "question": "What is the difference between FC-LSTM Rainfall-MSE 1.865 and ConvLSTM Rainfall-MSE 1.420 in Table 2?",
+    "category": "calculation",
+    "expected_tools": [
+      "table_retriever",
+      "calculator"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      8
+    ],
+    "reference_answer": "Difference is 0.445.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 8)"
+    ]
+  },
+  {
+    "question_id": "Q30",
+    "question": "What is the percentage parameter reduction from 142667776 in FC-LSTM to 13524496 in ConvLSTM Table 1?",
+    "category": "calculation",
+    "expected_tools": [
+      "table_retriever",
+      "calculator"
+    ],
+    "expected_documents": [
+      "convlstm_precipitation_nowcasting.pdf"
+    ],
+    "expected_pages": [
+      6
+    ],
+    "reference_answer": "90.5204% parameter reduction.",
+    "reference_citations": [
+      "convlstm_precipitation_nowcasting.pdf, Table (p. 6)"
+    ]
+  }
+]

@@ -1,0 +1,54 @@
+# Environment variables
+.env
+
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache & build outputs
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database & Generated/Cached Data
+data/chroma/
+data/processed/
+data/figures/
+data/cache/
+
+# Benchmark Evaluation Reports
+reports/
+
+# Personal Learning & Private Documentation
+ARCHITECTURE.md
+LEARNING_GUIDE.md
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
