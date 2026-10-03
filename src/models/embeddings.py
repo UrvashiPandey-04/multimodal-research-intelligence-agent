@@ -1,7 +1,3 @@
-"""
-BGE Embeddings module using sentence-transformers (BAAI/bge-small-en-v1.5).
-"""
-
 import os
 from typing import List, Optional
 from sentence_transformers import SentenceTransformer
@@ -49,7 +45,6 @@ class BGEEmbeddings:
         if not text:
             return [0.0] * self.embedding_dim
 
-        # BGE query instruction prefix is recommended for queries, but for chunk indexing standard embedding is used.
         vec = self._model.encode(text, normalize_embeddings=True)
         return vec.tolist()
 
@@ -71,6 +66,51 @@ class BGEEmbeddings:
         return vecs.tolist()
 
 
-def get_embedding_model(model_name: Optional[str] = None) -> BGEEmbeddings:
-    """Helper function to obtain cached BGEEmbeddings singleton instance."""
+class GeminiEmbeddings:
+    """API-based embedding generator using Google Gemini API (text-embedding-004)."""
+
+    def __init__(self, model_name: Optional[str] = None):
+        from google import genai
+        from src.config import get_gemini_api_key
+
+        key = get_gemini_api_key()
+        if not key:
+            raise ValueError("GEMINI_API_KEY is required for Gemini embeddings provider.")
+        self.client = genai.Client(api_key=key)
+        self.model_name = model_name or os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+        self.embedding_dim = 768
+
+    def embed_text(self, text: str) -> List[float]:
+        if not text:
+            return [0.0] * self.embedding_dim
+        res = self.client.models.embed_content(
+            model=self.model_name,
+            contents=text,
+        )
+        return res.embedding.values or [0.0] * self.embedding_dim
+
+    def embed_batch(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+        if not texts:
+            return []
+        embeddings = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            res = self.client.models.embed_content(
+                model=self.model_name,
+                contents=batch,
+            )
+            if hasattr(res, "embeddings") and res.embeddings:
+                for emb in res.embeddings:
+                    embeddings.append(emb.values)
+            elif hasattr(res, "embedding") and res.embedding:
+                embeddings.append(res.embedding.values)
+        return embeddings
+
+
+def get_embedding_model(model_name: Optional[str] = None, provider: Optional[str] = None):
+    """Factory function to obtain requested embedding model (local BGE or API Gemini)."""
+    prov = (provider or os.getenv("EMBEDDING_PROVIDER", "local")).lower()
+    if prov == "gemini":
+        return GeminiEmbeddings(model_name=model_name)
     return BGEEmbeddings(model_name=model_name)
+

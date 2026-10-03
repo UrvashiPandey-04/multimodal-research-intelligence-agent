@@ -31,7 +31,7 @@ st.set_page_config(
 
 
 # 1. Resource Caching: Index papers once per application runtime
-@st.cache_resource(show_spinner="Indexing canonical research papers into vector store...")
+@st.cache_resource(show_spinner="Loading sample research papers...\nBuilding search index...\nThis may take a moment on the first run.")
 def get_cached_agent() -> ResearchAgent:
     """Initialize agent and index canonical PDF papers into in-memory/persistent vector stores."""
     runner = EvaluationRunner()
@@ -67,6 +67,8 @@ def parse_markdown_table_to_dataframe(md_text: str) -> Optional[pd.DataFrame]:
 
 
 def main():
+    cfg = get_config_summary()
+
     # Sidebar
     with st.sidebar:
         st.title("🔬 Research Assistant")
@@ -90,11 +92,10 @@ def main():
 
         st.markdown("---")
         st.subheader("⚙️ System Status")
-        cfg = get_config_summary()
-        api_status = "✅ Configured" if cfg["gemini_api_key_configured"] else "⚠️ Unconfigured (Fallback Mode)"
+        api_status = "✅ Configured" if cfg["gemini_api_key_configured"] else "⚠️ Unconfigured (Missing Secret)"
         st.markdown(f"**Gemini API:** {api_status}")
         st.markdown(f"**LLM Model:** `{cfg['gemini_model']}`")
-        st.markdown(f"**Embedding Model:** `{cfg['embedding_model']}`")
+        st.markdown(f"**Embedding Model:** `{cfg['embedding_model']}` (`{cfg['embedding_provider']}`)")
         st.markdown(f"**OCR Status:** `{'Enabled' if cfg['ocr_enabled'] else 'Disabled'}`")
 
     # Main Interface Header
@@ -103,12 +104,23 @@ def main():
         "An evidence-grounded AI research assistant that parses, retrieves, reasons, and cites complex multimodal scientific research papers (PDFs)."
     )
 
+    # Friendly API Key Check Screen
+    if not cfg["gemini_api_key_configured"]:
+        st.error("⚠️ **GEMINI_API_KEY is missing or unconfigured.**")
+        st.info(
+            "To enable Gemini 2.5 Flash synthesis and VLM figure analysis, please configure your API key:\n\n"
+            "- **Streamlit Community Cloud:** Add `GEMINI_API_KEY = \"your_api_key\"` under **App Settings → Secrets**.\n"
+            "- **Local Setup:** Create a `.env` file in the project root containing `GEMINI_API_KEY=your_actual_key`.\n\n"
+            "[Get a Gemini API key from Google AI Studio](https://aistudio.google.com/)"
+        )
+
     # Initialize Agent
     try:
         agent = get_cached_agent()
     except Exception as e:
-        st.error(f"Failed to initialize Research Agent: {e}")
+        st.error(f"Failed to initialize Research Agent index: {e}")
         st.stop()
+
 
     st.markdown("---")
 

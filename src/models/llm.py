@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from src.config import get_gemini_api_key
+
 load_dotenv()
 
 
@@ -29,10 +31,10 @@ class GeminiLLM:
         Initialize Gemini LLM client.
 
         Args:
-            api_key: Gemini API Key. If None, resolves from GEMINI_API_KEY env var.
+            api_key: Gemini API Key. If None, resolves from GEMINI_API_KEY env var or st.secrets.
             model_name: Gemini model ID (default: gemini-2.5-flash).
         """
-        key = api_key or os.getenv("GEMINI_API_KEY")
+        key = api_key or get_gemini_api_key()
         self.api_key = key
         self.model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -40,6 +42,7 @@ class GeminiLLM:
             self.client = genai.Client(api_key=key)
         else:
             self.client = None
+
 
     def is_configured(self) -> bool:
         """Check if Gemini API key is configured and client is initialized."""
@@ -76,12 +79,20 @@ class GeminiLLM:
             system_instruction=system_instruction,
         )
 
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config,
-            )
-            return response.text or ""
-        except Exception as e:
-            raise GeminiAPIError(f"Gemini API call failed: {e}") from e
+        import time
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=config,
+                )
+                return response.text or ""
+            except Exception as e:
+                err_str = str(e)
+                if ("503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                raise GeminiAPIError(f"Gemini API call failed: {e}") from e
+

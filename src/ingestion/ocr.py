@@ -3,6 +3,7 @@ OCR Engine module integrating Tesseract OCR fallback for scanned or low-text PDF
 """
 
 import os
+import shutil
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
@@ -32,20 +33,21 @@ class OCREngine:
         Initialize Tesseract OCR engine.
 
         Args:
-            tesseract_cmd: Custom path to tesseract.exe binary. If None, checks env var TESSERACT_CMD
-                           or default system installation path on Windows.
+            tesseract_cmd: Custom path to tesseract binary. If None, checks env var TESSERACT_CMD
+                           or system PATH via shutil.which("tesseract").
         """
-        # Resolve tesseract executable path
+        # Resolve tesseract executable path dynamically
         cmd = (
             tesseract_cmd
             or os.getenv("TESSERACT_CMD")
-            or r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+            or shutil.which("tesseract")
         )
 
-        if cmd and Path(cmd).exists():
+        if cmd and (Path(cmd).exists() or shutil.which(str(cmd))):
             pytesseract.pytesseract.tesseract_cmd = str(cmd)
         elif tesseract_cmd:
             raise OCRNotAvailableError(f"Specified Tesseract binary not found at: {tesseract_cmd}")
+
 
     def is_available(self) -> bool:
         """Check whether Tesseract engine is installed and functional."""
