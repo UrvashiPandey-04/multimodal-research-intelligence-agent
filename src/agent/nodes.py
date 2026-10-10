@@ -2,6 +2,7 @@
 LangGraph Nodes implementing the research agent orchestration steps.
 """
 
+from pathlib import Path
 from typing import Dict, Any, Optional
 from src.agent.state import ResearchAgentState
 from src.agent.query_analyzer import QueryAnalyzer, QueryAnalysis
@@ -73,17 +74,49 @@ class ResearchAgentNodes:
         query = state.get("original_query", "")
         analysis: Optional[QueryAnalysis] = state.get("query_analysis")
         tools = state.get("selected_tools", [])
+        paper_filter_raw = state.get("paper_filter")
+
+        paper_filter_list = None
+        if isinstance(paper_filter_raw, str) and paper_filter_raw.strip():
+            paper_filter_list = [paper_filter_raw.strip()]
+        elif isinstance(paper_filter_raw, list) and len(paper_filter_raw) > 0:
+            paper_filter_list = [str(p).strip() for p in paper_filter_raw if str(p).strip()]
+
+        target_source = paper_filter_list[0] if paper_filter_list and len(paper_filter_list) == 1 else None
 
         tool_results: Dict[str, Any] = {}
         errors = list(state.get("errors", []))
 
+        # Helper matching function
+        def matches_paper_filter(source_fn: str, doc_id_str: str) -> bool:
+            if not paper_filter_list:
+                return True
+            for p in paper_filter_list:
+                p_clean = str(p).strip()
+                p_stem = Path(p_clean).stem
+                if (
+                    source_fn == p_clean
+                    or doc_id_str == p_clean
+                    or doc_id_str == p_stem
+                    or p_clean in source_fn
+                    or p_stem in doc_id_str
+                    or source_fn in p_clean
+                    or doc_id_str in p_clean
+                ):
+                    return True
+            return False
+
         # 1. Text Retrieval
         if "text_retriever" in tools:
             try:
-                if analysis and analysis.requires_multiple_papers:
+                if analysis and analysis.requires_multiple_papers and not paper_filter_list:
                     chunks = self.text_retriever.search_diversified(query, top_k=6, per_doc_limit=3)
                 else:
-                    chunks = self.text_retriever.search(query, top_k=4)
+                    chunks = self.text_retriever.search(query, top_k=6 if paper_filter_list else 4, source_filename=target_source)
+                
+                if paper_filter_list:
+                    chunks = [c for c in chunks if matches_paper_filter(c.source_filename, c.doc_id)]
+                
                 tool_results["text_chunks"] = chunks
             except Exception as e:
                 errors.append(f"Text retriever error: {e}")
@@ -92,7 +125,9 @@ class ResearchAgentNodes:
         # 2. Table Retrieval
         if "table_retriever" in tools:
             try:
-                tables = self.table_retriever.search(query, top_k=3)
+                tables = self.table_retriever.search(query, top_k=4 if paper_filter_list else 3, source_filename=target_source)
+                if paper_filter_list:
+                    tables = [t for t in tables if matches_paper_filter(t.source_filename, t.doc_id)]
                 tool_results["tables"] = tables
             except Exception as e:
                 errors.append(f"Table retriever error: {e}")
@@ -101,12 +136,15 @@ class ResearchAgentNodes:
         # 3. Figure Retrieval & VLM Analysis
         if "figure_retriever" in tools or "figure_vlm" in tools:
             try:
-                figures = self.figure_retriever.search(query, top_k=2)
+                figures = self.figure_retriever.search(query, top_k=4 if paper_filter_list else 2, doc_id_filter=target_source)
+                if paper_filter_list:
+                    figures = [f for f in figures if matches_paper_filter(f.source_filename, f.doc_id)]
                 tool_results["figures"] = figures
+
 
                 # VLM visual analysis for top retrieved figures
                 if "figure_vlm" in tools and figures:
-                    for fig_res in figures:
+                    for fig_res in figures[:2]:
                         # Reconstruct ExtractedFigure context for VLM
                         from src.ingestion.figure_parser import ExtractedFigure
                         fig_obj = ExtractedFigure(
@@ -134,6 +172,7 @@ class ResearchAgentNodes:
                 errors.append(f"Calculator tool error: {e}")
 
         return {"tool_results": tool_results, "errors": errors}
+
 
     def evidence_collection_node(self, state: ResearchAgentState) -> Dict[str, Any]:
         """Node 4: Normalize all tool outputs into authoritative request EvidenceRegistry."""
@@ -205,8 +244,12 @@ class ResearchAgentNodes:
             )
             return {"generated_answer": raw_answer}
         except Exception as e:
-            fallback = f"Answer generation failed: {e}. Available evidence: {fused.evidence_count} items."
-            return {"generated_answer": fallback}
+            from src.models.llm import GeminiQuotaExceededError
+            if isinstance(e, GeminiQuotaExceededError) or "quota" in str(e).lower():
+                quota_msg = "Gemini API quota has been reached. Answer generation is temporarily unavailable."
+                return {"generated_answer": quota_msg, "errors": [quota_msg]}
+            fallback = "Answer generation is currently unavailable due to an API service error."
+            return {"generated_answer": fallback, "errors": [fallback]}
 
     def citation_validation_node(self, state: ResearchAgentState) -> Dict[str, Any]:
         """Node 7: Deterministically validate citation tags against EvidenceRegistry provenance."""

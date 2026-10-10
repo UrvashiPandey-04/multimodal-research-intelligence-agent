@@ -139,11 +139,19 @@ class ResponseGenerator:
             answer_text = "[API KEY MISSING] Cannot generate Gemini response without GEMINI_API_KEY."
             is_grounded = False
         else:
-            answer_text = self.llm.generate_text(
-                prompt=prompt,
-                system_instruction=RAG_SYSTEM_INSTRUCTION,
-            )
-            is_grounded = True
+            try:
+                answer_text = self.llm.generate_text(
+                    prompt=prompt,
+                    system_instruction=RAG_SYSTEM_INSTRUCTION,
+                )
+                is_grounded = True
+            except Exception as e:
+                from src.models.llm import GeminiQuotaExceededError
+                if isinstance(e, GeminiQuotaExceededError) or "quota" in str(e).lower():
+                    answer_text = "Gemini API quota has been reached. Answer generation is temporarily unavailable."
+                else:
+                    answer_text = "Answer generation is currently unavailable due to an API error."
+                is_grounded = False
 
         # 7. Deterministic Citation Validation against Request EvidenceRegistry
         val_result: ValidationResult = self.validator.validate_citations(

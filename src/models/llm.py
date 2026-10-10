@@ -23,6 +23,49 @@ class GeminiAPIError(Exception):
     pass
 
 
+class GeminiQuotaExceededError(GeminiAPIError):
+    """Raised when Gemini API quota or rate limit is reached (HTTP 429 / RESOURCE_EXHAUSTED)."""
+    pass
+
+
+def is_quota_error(err: Exception) -> bool:
+    """Check if an exception corresponds to a Gemini API quota or rate limit error (HTTP 429 / RESOURCE_EXHAUSTED)."""
+    if isinstance(err, GeminiQuotaExceededError):
+        return True
+    err_str = str(err).lower()
+    quota_keywords = [
+        "429",
+        "resource_exhausted",
+        "quota exceeded",
+        "quota_exceeded",
+        "rate limit",
+        "rate_limit",
+        "per day",
+        "daily quota",
+        "free_tier",
+        "freetier",
+    ]
+    return any(kw in err_str for kw in quota_keywords)
+
+
+def is_daily_quota_error(err: Exception) -> bool:
+    """Check if an exception indicates an exhausted daily/hard quota (should fail fast without retrying)."""
+    err_str = str(err).lower()
+    daily_keywords = [
+        "per day",
+        "daily",
+        "day quota",
+        "free tier",
+        "freetier",
+        "limit per day",
+    ]
+    if any(dk in err_str for dk in daily_keywords):
+        return True
+    if ("429" in err_str or "resource_exhausted" in err_str) and ("quota" in err_str or "limit" in err_str):
+        return True
+    return False
+
+
 class GeminiLLM:
     """Wrapper for Google Gemini API (gemini-2.5-flash) generation calls."""
 
@@ -42,7 +85,6 @@ class GeminiLLM:
             self.client = genai.Client(api_key=key)
         else:
             self.client = None
-
 
     def is_configured(self) -> bool:
         """Check if Gemini API key is configured and client is initialized."""
@@ -67,7 +109,8 @@ class GeminiLLM:
 
         Raises:
             MissingAPIKeyError: If API key is missing.
-            GeminiAPIError: If API call fails.
+            GeminiQuotaExceededError: If API quota/rate-limit is reached.
+            GeminiAPIError: If generic API call fails.
         """
         if not self.is_configured():
             raise MissingAPIKeyError(
@@ -81,6 +124,8 @@ class GeminiLLM:
 
         import time
         max_retries = 3
+        quota_msg = "Gemini API quota has been reached. Answer generation is temporarily unavailable."
+
         for attempt in range(max_retries):
             try:
                 response = self.client.models.generate_content(
@@ -90,9 +135,16 @@ class GeminiLLM:
                 )
                 return response.text or ""
             except Exception as e:
-                err_str = str(e)
-                if ("503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_retries - 1:
-                    time.sleep(2 * (attempt + 1))
+                if is_quota_error(e):
+                    if is_daily_quota_error(e) or attempt >= max_retries - 1:
+                        raise GeminiQuotaExceededError(quota_msg) from e
+                    time.sleep(1.0 * (attempt + 1))
                     continue
-                raise GeminiAPIError(f"Gemini API call failed: {e}") from e
+
+                err_str = str(e)
+                if ("503" in err_str or "UNAVAILABLE" in err_str) and attempt < max_retries - 1:
+                    time.sleep(1.0 * (attempt + 1))
+                    continue
+
+                raise GeminiAPIError("Gemini API call failed due to a service error.") from e
 

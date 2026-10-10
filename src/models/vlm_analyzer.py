@@ -164,13 +164,19 @@ class VLMFigureAnalyzer:
             return analysis_res
 
         except Exception as e:
+            from src.models.llm import is_quota_error
+            if is_quota_error(e):
+                err_msg = "VLM analysis unavailable: Gemini API quota has been reached."
+            else:
+                err_msg = "VLM analysis unavailable due to API error."
+
             fallback = FigureAnalysisResult(
                 figure_summary=f"Figure analysis from {figure.source_filename} (p. {figure.page_number}). Caption: {figure.caption or 'None'}.",
                 figure_type="unknown",
                 observations=[],
                 visible_values=[],
-                uncertainties=[f"VLM invocation failed: {e}"],
-                raw_response=str(e),
+                uncertainties=[err_msg],
+                raw_response=err_msg,
             )
             return fallback
 

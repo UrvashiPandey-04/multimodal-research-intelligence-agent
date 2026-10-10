@@ -60,18 +60,24 @@ class ResearchAgent:
         self.nodes = nodes or ResearchAgentNodes()
         self.graph = build_research_agent_graph(self.nodes)
 
-    def run(self, query: str) -> ResearchAgentState:
+    def run(
+        self,
+        query: str,
+        paper_filter: Optional[Any] = None,
+    ) -> ResearchAgentState:
         """
         Execute user query through the LangGraph workflow end-to-end.
 
         Args:
             query: Natural language query string.
+            paper_filter: Optional source_filename filter (str or list of str).
 
         Returns:
             Final ResearchAgentState dictionary containing answer, citations, and evidence provenance.
         """
         initial_state: ResearchAgentState = {
             "original_query": query,
+            "paper_filter": paper_filter,
             "selected_tools": [],
             "tool_results": {},
             "errors": [],
@@ -80,6 +86,7 @@ class ResearchAgent:
 
         final_state = self.graph.invoke(initial_state)
         return final_state
+
 
     def get_graph_ascii(self) -> str:
         """Return ASCII diagram representation of the LangGraph structure."""
