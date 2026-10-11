@@ -41,6 +41,8 @@ class ResearchResponse:
 def answer_query(
     query: str,
     agent: Optional[ResearchAgent] = None,
+    collection: Optional[Any] = None,
+    paper_filter: Optional[Any] = None,
 ) -> ResearchResponse:
     """
     Single application-level entry point for answering research paper questions.
@@ -48,6 +50,8 @@ def answer_query(
     Args:
         query: User natural language research query.
         agent: Optional pre-configured ResearchAgent instance.
+        collection: Optional target collection name or Chroma collection object.
+        paper_filter: Optional source_filename paper filter (str or list of str).
 
     Returns:
         Structured ResearchResponse containing grounded answer, selected tools,
@@ -69,12 +73,12 @@ def answer_query(
             errors=["empty_query"],
         )
 
-    log_event("query_received", {"query": clean_query})
+    log_event("query_received", {"query": clean_query, "paper_filter": paper_filter})
 
     # 2. Execute ResearchAgent LangGraph workflow
     try:
         agent_instance = agent or ResearchAgent()
-        state: ResearchAgentState = agent_instance.run(clean_query)
+        state: ResearchAgentState = agent_instance.run(clean_query, paper_filter=paper_filter)
     except Exception as e:
         log_event("agent_execution_failed", {"error": str(e)}, level=40)
         return ResearchResponse(
@@ -87,6 +91,7 @@ def answer_query(
             warnings=[],
             errors=[f"Agent execution exception: {e}"],
         )
+
 
     # 3. Extract execution details from state
     selected_tools = state.get("selected_tools", [])
@@ -116,7 +121,9 @@ def answer_query(
         "insufficient evidence",
         "no relevant evidence",
     ]
-    if any(phrase in answer.lower() for phrase in insufficient_phrases):
+    if "quota has been reached" in answer.lower() or "quota" in answer.lower():
+        validation_status = "quota_exceeded"
+    elif any(phrase in answer.lower() for phrase in insufficient_phrases):
         validation_status = "insufficient_evidence"
     elif errors and not answer:
         validation_status = "error"

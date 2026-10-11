@@ -5,6 +5,8 @@ Provides an interactive research dashboard for evidence-grounded scientific QA o
 
 import os
 import sys
+import tempfile
+from typing import Optional
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
@@ -20,6 +22,7 @@ from src.config import get_config_summary
 from src.api import answer_query, ResearchResponse
 from src.evaluation.runner import EvaluationRunner
 from src.agent.graph import ResearchAgent
+from src.ingestion.pipeline import ingest_pdf, IngestionReport, PDFValidationError
 
 # Page configuration
 st.set_page_config(
@@ -31,7 +34,7 @@ st.set_page_config(
 
 
 # 1. Resource Caching: Index papers once per application runtime
-@st.cache_resource(show_spinner="Indexing canonical research papers into vector store...")
+@st.cache_resource(show_spinner="Loading sample research papers...\nBuilding search index...\nThis may take a moment on the first run.")
 def get_cached_agent() -> ResearchAgent:
     """Initialize agent and index canonical PDF papers into in-memory/persistent vector stores."""
     runner = EvaluationRunner()
@@ -67,19 +70,76 @@ def parse_markdown_table_to_dataframe(md_text: str) -> Optional[pd.DataFrame]:
 
 
 def main():
+    cfg = get_config_summary()
+    st.session_state.setdefault("uploaded_paper_names", [])
+
+    # Initialize Agent
+    try:
+        agent = get_cached_agent()
+    except Exception as e:
+        st.error(f"Failed to initialize Research Agent index: {e}")
+        st.stop()
+
     # Sidebar
     with st.sidebar:
         st.title("🔬 Research Assistant")
         st.markdown("---")
 
+        # Custom PDF Upload
+        st.subheader("📤 Upload Custom Research Paper")
+        uploaded_file = st.file_uploader(
+            "Upload a research paper PDF (Max 20MB, up to 50 pages):",
+            type=["pdf"],
+            key="custom_pdf_uploader",
+            help="Maximum file size: 20 MB. Maximum document length: 50 pages.",
+        )
+
+        if uploaded_file is not None:
+            if uploaded_file.name not in st.session_state["uploaded_paper_names"]:
+                with st.spinner(f"Ingesting '{uploaded_file.name}' into vector index..."):
+                    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                        tmp.write(uploaded_file.getvalue())
+                        tmp_path = tmp.name
+
+                    try:
+                        report: IngestionReport = ingest_pdf(
+                            pdf_path=tmp_path,
+                            vector_store=agent.nodes.text_retriever.vector_store,
+                            table_repo=agent.nodes.table_retriever.table_repo if hasattr(agent.nodes.table_retriever, 'table_repo') else None,
+                            table_retriever=agent.nodes.table_retriever,
+                            fig_extractor=agent.nodes.figure_retriever.fig_extractor if hasattr(agent.nodes.figure_retriever, 'fig_extractor') else None,
+                            fig_repo=agent.nodes.figure_retriever.figure_repo if hasattr(agent.nodes.figure_retriever, 'figure_repo') else None,
+                            figure_retriever=agent.nodes.figure_retriever,
+                            paper_name=uploaded_file.name,
+                        )
+
+                        if report.success:
+                            st.session_state["uploaded_paper_names"].append(uploaded_file.name)
+                            st.success(
+                                f"✅ Ingested **{report.paper_name}**\n\n"
+                                f"• Pages: {report.pages} | Chunks: {report.chunks} | Tables: {report.tables} | Figures: {report.figures}"
+                            )
+                        else:
+                            st.error(f"❌ Upload ingestion error: {', '.join(report.errors)}")
+                    except Exception as ex:
+                        st.error(f"❌ Failed to process PDF: {ex}")
+                    finally:
+                        if os.path.exists(tmp_path):
+                            os.remove(tmp_path)
+
+        st.markdown("---")
+
         st.subheader("📚 Available Research Papers")
+        canonical_pdfs = []
         papers_dir = os.path.join(project_root, "data", "papers")
         if os.path.exists(papers_dir):
-            pdf_files = [f for f in os.listdir(papers_dir) if f.endswith(".pdf")]
-            for pdf in pdf_files:
-                st.markdown(f"• `{pdf}`")
-        else:
-            st.warning("Papers directory not found.")
+            canonical_pdfs = [f for f in os.listdir(papers_dir) if f.endswith(".pdf")]
+
+        all_available_pdfs = list(dict.fromkeys(canonical_pdfs + st.session_state["uploaded_paper_names"]))
+        for pdf in all_available_pdfs:
+            is_custom = pdf in st.session_state["uploaded_paper_names"]
+            badge = " 🆕" if is_custom else ""
+            st.markdown(f"• `{pdf}`{badge}")
 
         st.markdown("---")
         st.subheader("🛠️ Supported Modalities")
@@ -90,11 +150,10 @@ def main():
 
         st.markdown("---")
         st.subheader("⚙️ System Status")
-        cfg = get_config_summary()
-        api_status = "✅ Configured" if cfg["gemini_api_key_configured"] else "⚠️ Unconfigured (Fallback Mode)"
+        api_status = "✅ Configured" if cfg["gemini_api_key_configured"] else "⚠️ Unconfigured (Missing Secret)"
         st.markdown(f"**Gemini API:** {api_status}")
         st.markdown(f"**LLM Model:** `{cfg['gemini_model']}`")
-        st.markdown(f"**Embedding Model:** `{cfg['embedding_model']}`")
+        st.markdown(f"**Embedding Model:** `{cfg['embedding_model']}` (`{cfg['embedding_provider']}`)")
         st.markdown(f"**OCR Status:** `{'Enabled' if cfg['ocr_enabled'] else 'Disabled'}`")
 
     # Main Interface Header
@@ -103,28 +162,36 @@ def main():
         "An evidence-grounded AI research assistant that parses, retrieves, reasons, and cites complex multimodal scientific research papers (PDFs)."
     )
 
-    # Initialize Agent
-    try:
-        agent = get_cached_agent()
-    except Exception as e:
-        st.error(f"Failed to initialize Research Agent: {e}")
-        st.stop()
+    # Friendly API Key Check Screen
+    if not cfg["gemini_api_key_configured"]:
+        st.error("⚠️ **GEMINI_API_KEY is missing or unconfigured.**")
+        st.info(
+            "To enable Gemini 2.5 Flash synthesis and VLM figure analysis, please configure your API key:\n\n"
+            "- **Streamlit Community Cloud:** Add `GEMINI_API_KEY = \"your_api_key\"` under **App Settings → Secrets**.\n"
+            "- **Local Setup:** Create a `.env` file in the project root containing `GEMINI_API_KEY=your_actual_key`.\n\n"
+            "[Get a Gemini API key from Google AI Studio](https://aistudio.google.com/)"
+        )
 
     st.markdown("---")
 
-    # Quick Sample Queries for Interview Demo
-    st.subheader("💡 Try Sample Demo Queries")
-    sample_queries = [
-        "Select a sample question...",
-        "What main research problem does the ConvLSTM paper address?",
-        "Which model achieves the lowest Rainfall-MSE score in Table 1?",
-        "What does Figure 1 illustrate regarding 2D image transformations over time?",
-        "Compare the purpose of canonical_sample.pdf vs convlstm_precipitation_nowcasting.pdf.",
-        "What is the percentage improvement from Rainfall-MSE 0.120 (FC-LSTM) to 0.089 (ConvLSTM 5x5)?",
-        "What color is the author's cat in the ConvLSTM paper?",
-    ]
+    # Paper Filter Selection Control
+    col_filter, col_preset = st.columns([1, 2])
+    with col_filter:
+        paper_filter_options = ["All Research Papers"] + all_available_pdfs
+        selected_paper_filter = st.selectbox("🎯 Target Document Filter:", paper_filter_options, index=0)
+        paper_filter_param = None if selected_paper_filter == "All Research Papers" else selected_paper_filter
 
-    selected_sample = st.selectbox("Choose a preset query to run:", sample_queries, index=0)
+    with col_preset:
+        sample_queries = [
+            "Select a sample question...",
+            "What main research problem does the ConvLSTM paper address?",
+            "Which model achieves the lowest Rainfall-MSE score in Table 1?",
+            "What does Figure 1 illustrate regarding 2D image transformations over time?",
+            "Compare the purpose of canonical_sample.pdf vs convlstm_precipitation_nowcasting.pdf.",
+            "What is the percentage improvement from Rainfall-MSE 0.120 (FC-LSTM) to 0.089 (ConvLSTM 5x5)?",
+            "What color is the author's cat in the ConvLSTM paper?",
+        ]
+        selected_sample = st.selectbox("💡 Preset Demo Query:", sample_queries, index=0)
 
     # Question Input
     default_text = selected_sample if selected_sample != "Select a sample question..." else ""
@@ -134,14 +201,15 @@ def main():
     ask_clicked = col_ask.button("🔍 Ask Agent", type="primary")
 
     if ask_clicked and user_query:
-        with st.spinner("Analyzing query, selecting tools, retrieving multimodal evidence, and synthesizing answer..."):
-            response: ResearchResponse = answer_query(user_query, agent=agent)
+        filter_status = f" restricted to '{paper_filter_param}'" if paper_filter_param else " across all documents"
+        with st.spinner(f"Analyzing query, selecting tools, retrieving evidence{filter_status}, and synthesizing answer..."):
+            response: ResearchResponse = answer_query(user_query, agent=agent, paper_filter=paper_filter_param)
 
         st.markdown("---")
 
         # 1. Answer Display
         st.subheader("📝 Answer")
-        if response.validation_status == "insufficient_evidence":
+        if response.validation_status in ("insufficient_evidence", "quota_exceeded"):
             st.warning(f"⚠️ {response.answer}")
         elif response.validation_status == "error":
             st.error(f"❌ {response.answer}")
@@ -211,6 +279,7 @@ def main():
         # 4. Agent Execution Details (Safe Metadata Only)
         with st.expander("⚙️ Agent Execution Details (Metadata Trace)", expanded=False):
             st.markdown(f"**Query Processed:** `{response.query}`")
+            st.markdown(f"**Target Paper Filter:** `{paper_filter_param or 'None (All Papers)'}`")
             st.markdown(f"**Selected Tools:** `{response.selected_tools}`")
             st.markdown(f"**Validation Status:** `{response.validation_status}`")
             st.markdown(f"**Total Evidence Items:** `{len(response.evidence)}`")

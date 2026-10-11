@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from src.config import get_gemini_api_key
+
 load_dotenv()
 
 
@@ -21,6 +23,49 @@ class GeminiAPIError(Exception):
     pass
 
 
+class GeminiQuotaExceededError(GeminiAPIError):
+    """Raised when Gemini API quota or rate limit is reached (HTTP 429 / RESOURCE_EXHAUSTED)."""
+    pass
+
+
+def is_quota_error(err: Exception) -> bool:
+    """Check if an exception corresponds to a Gemini API quota or rate limit error (HTTP 429 / RESOURCE_EXHAUSTED)."""
+    if isinstance(err, GeminiQuotaExceededError):
+        return True
+    err_str = str(err).lower()
+    quota_keywords = [
+        "429",
+        "resource_exhausted",
+        "quota exceeded",
+        "quota_exceeded",
+        "rate limit",
+        "rate_limit",
+        "per day",
+        "daily quota",
+        "free_tier",
+        "freetier",
+    ]
+    return any(kw in err_str for kw in quota_keywords)
+
+
+def is_daily_quota_error(err: Exception) -> bool:
+    """Check if an exception indicates an exhausted daily/hard quota (should fail fast without retrying)."""
+    err_str = str(err).lower()
+    daily_keywords = [
+        "per day",
+        "daily",
+        "day quota",
+        "free tier",
+        "freetier",
+        "limit per day",
+    ]
+    if any(dk in err_str for dk in daily_keywords):
+        return True
+    if ("429" in err_str or "resource_exhausted" in err_str) and ("quota" in err_str or "limit" in err_str):
+        return True
+    return False
+
+
 class GeminiLLM:
     """Wrapper for Google Gemini API (gemini-2.5-flash) generation calls."""
 
@@ -29,10 +74,10 @@ class GeminiLLM:
         Initialize Gemini LLM client.
 
         Args:
-            api_key: Gemini API Key. If None, resolves from GEMINI_API_KEY env var.
+            api_key: Gemini API Key. If None, resolves from GEMINI_API_KEY env var or st.secrets.
             model_name: Gemini model ID (default: gemini-2.5-flash).
         """
-        key = api_key or os.getenv("GEMINI_API_KEY")
+        key = api_key or get_gemini_api_key()
         self.api_key = key
         self.model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -64,7 +109,8 @@ class GeminiLLM:
 
         Raises:
             MissingAPIKeyError: If API key is missing.
-            GeminiAPIError: If API call fails.
+            GeminiQuotaExceededError: If API quota/rate-limit is reached.
+            GeminiAPIError: If generic API call fails.
         """
         if not self.is_configured():
             raise MissingAPIKeyError(
@@ -76,12 +122,29 @@ class GeminiLLM:
             system_instruction=system_instruction,
         )
 
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=config,
-            )
-            return response.text or ""
-        except Exception as e:
-            raise GeminiAPIError(f"Gemini API call failed: {e}") from e
+        import time
+        max_retries = 3
+        quota_msg = "Gemini API quota has been reached. Answer generation is temporarily unavailable."
+
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=config,
+                )
+                return response.text or ""
+            except Exception as e:
+                if is_quota_error(e):
+                    if is_daily_quota_error(e) or attempt >= max_retries - 1:
+                        raise GeminiQuotaExceededError(quota_msg) from e
+                    time.sleep(1.0 * (attempt + 1))
+                    continue
+
+                err_str = str(e)
+                if ("503" in err_str or "UNAVAILABLE" in err_str) and attempt < max_retries - 1:
+                    time.sleep(1.0 * (attempt + 1))
+                    continue
+
+                raise GeminiAPIError("Gemini API call failed due to a service error.") from e
+

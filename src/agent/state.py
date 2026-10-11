@@ -14,6 +14,7 @@ class ResearchAgentState(TypedDict, total=False):
     Typed graph state passed through LangGraph research agent nodes.
     """
     original_query: str
+    paper_filter: Optional[Any]
     query_analysis: Optional[QueryAnalysis]
     selected_tools: List[str]
     tool_results: Dict[str, Any]

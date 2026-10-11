@@ -135,10 +135,12 @@ class VectorStore:
             return []
 
         where_filter: Optional[Dict[str, Any]] = None
-        if doc_id:
-            where_filter = {"doc_id": doc_id}
-        elif source_filename:
-            where_filter = {"source_filename": source_filename}
+        target = doc_id or source_filename
+        if target:
+            if str(target).lower().endswith(".pdf"):
+                where_filter = {"source_filename": {"$eq": str(target)}}
+            else:
+                where_filter = {"doc_id": {"$eq": str(target)}}
 
         results = self.collection.query(
             query_embeddings=[query_vector],

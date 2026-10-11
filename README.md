@@ -126,8 +126,8 @@ The system is tested against three canonical hydro-meteorological deep learning 
 ### Setup Instructions
 1. Clone the repository and navigate to root:
    ```bash
-   git clone https://github.com/your-repo/multimodal-research-agent.git
-   cd multimodal-research-agent
+   git clone https://github.com/UrvashiPandey-04/multimodal-research-intelligence-agent.git
+   cd multimodal-research-intelligence-agent
    ```
 2. Create and activate a virtual environment:
    ```bash
@@ -222,6 +222,9 @@ Streamlit UI Render (Answer + Citations + Grouped Evidence + Safe Trace)
 
 ### Key UI Features:
 - **Resource Caching:** `@st.cache_resource` caches the canonical paper vector indices once per application runtime (`get_cached_agent()`), avoiding expensive PDF re-ingestion on Streamlit reruns.
+- **Custom PDF Upload:** Upload and ingest custom research papers (≤ 20 MB, ≤ 50 pages) dynamically into the active vector index with real-time `IngestionReport` metrics.
+- **Target Document Filtering:** Select specific papers or query globally across "All Research Papers" with multi-modal provenance preservation.
+- **Resilient Quota Handling:** Gracefully handles Gemini API HTTP 429 quota exhaustion (`RESOURCE_EXHAUSTED`) with clean warnings while preserving and displaying all retrieved multimodal evidence (text, tables, figures).
 - **Answer Presentation:** Clean separation between final answer, insufficient evidence warnings, and detailed provenance.
 - **Multimodal Evidence:** Grouped by source paper to prevent provenance ambiguity; tabular evidence is rendered via interactive `st.dataframe()` with Markdown fallback; figure evidence displays extracted PNG cropped images alongside captions and VLM findings.
 - **Safe Metadata Trace:** Expandable execution details showing query analysis, tool selection, citation validation status, and evidence counts without exposing internal chain-of-thought or model secrets.
@@ -230,13 +233,13 @@ Streamlit UI Render (Answer + Citations + Grouped Evidence + Safe Trace)
 ---
 
 ## 12. Known Limitations & Scope
-- **Document Scale:** Vector index is pre-configured for PDF files placed in `data/papers/`. Adding new PDFs requires triggering ingestion.
+- **Document Scale:** Vector index is pre-configured for PDF files placed in `data/papers/`. Adding new PDFs via UI requires triggering ingestion (<20MB, <50 pages).
 - **OCR Engine:** Scanned fallback OCR relies on local Tesseract installation (`tesseract.exe`). If uninstalled, PyMuPDF native text extraction remains active.
 - **VLM API:** Figure visual analysis requires `GEMINI_API_KEY`. If unconfigured, system gracefully falls back to text captions and heuristic descriptions.
 
 ---
 
-## 11. Failure-Mode & Reliability Matrix
+## 13. Failure-Mode & Reliability Matrix
 
 | Failure Mode | Detection Mechanism | Internal System Behavior | User-Facing Result |
 |---|---|---|---|
@@ -244,13 +247,14 @@ Streamlit UI Render (Answer + Citations + Grouped Evidence + Safe Trace)
 | **No Relevant Evidence Found** | `fused_context.evidence_count == 0` | Triggers explicit LLM grounding guardrail | `validation_status="insufficient_evidence"`, *"I don't have enough evidence..."* |
 | **Missing Document / Vector Store** | `FileNotFoundError` in retriever | Logs error event, sets `errors` array | Returns graceful error response without stack trace leakage |
 | **Gemini API Failure / Missing Key** | API exception or missing `GEMINI_API_KEY` | Triggers deterministic evidence summary fallback | `validation_status="valid"` with evidence-grounded summary fallback |
+| **Gemini API Quota (HTTP 429)** | `is_quota_error()` / `GeminiQuotaExceededError` | Fails fast without redundant retries; preserves retrieved chunks | `validation_status="quota_exceeded"`, clean warning displayed, multimodal evidence preserved |
 | **VLM Execution Failure** | Exception in `analyze_figure()` | Falls back to PyMuPDF crop + figure caption heuristics | Returns answer based on text caption without failing pipeline |
 | **Calculator Syntax / Div-by-Zero** | `SafeCalculator` AST evaluation check | Sets `calc_res.success = False`, records error | `validation_status="valid"` relying on text evidence without crash |
 | **LLM Invented Citation Tag** | `CitationValidator` registry cross-check | Rejects hallucinated `[E99]` citation tags | Formats answer preserving only verified provenance citations |
 
 ---
 
-## 12. Data Directory & Persistence Commit Policy
+## 14. Data Directory & Persistence Commit Policy
 
 - **Committed to Git:**
   - `data/papers/` (Canonical paper PDFs)
@@ -265,7 +269,7 @@ Streamlit UI Render (Answer + Citations + Grouped Evidence + Safe Trace)
 
 ---
 
-## 13. System Architecture & Component Mapping
+## 15. System Architecture & Component Mapping
 
 - **PDF Ingestion & OCR:** `src/ingestion/pdf_parser.py`, `src/ingestion/ocr.py`, `src/ingestion/normalizer.py`
 - **Chunking & Vector Storage:** `src/ingestion/chunker.py`, `src/models/embeddings.py`, `src/retrieval/vector_store.py`
