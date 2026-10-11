@@ -80,7 +80,7 @@ def validate_pdf_bytes(
     size_mb = len(pdf_bytes) / (1024 * 1024)
     if size_mb > max_size_mb:
         raise PDFValidationError(
-            f"File '{filename}' exceeds maximum allowed size of {max_size_mb} MB (file size: {size_mb:.1f} MB)."
+            f"File '{filename}' exceeds maximum allowed size of {int(max_size_mb)} MB (file size: {size_mb:.1f} MB)."
         )
 
     # 3. PyMuPDF parsing & encryption check

@@ -88,9 +88,10 @@ def main():
         # Custom PDF Upload
         st.subheader("📤 Upload Custom Research Paper")
         uploaded_file = st.file_uploader(
-            "Upload a research paper PDF (<20MB, <50 pages):",
+            "Upload a research paper PDF (Max 20MB, up to 50 pages):",
             type=["pdf"],
             key="custom_pdf_uploader",
+            help="Maximum file size: 20 MB. Maximum document length: 50 pages.",
         )
 
         if uploaded_file is not None:

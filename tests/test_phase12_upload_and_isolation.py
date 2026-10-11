@@ -44,12 +44,22 @@ def test_pdf_file_size_validation():
     with pytest.raises(PDFValidationError, match="exceeds maximum allowed size"):
         validate_pdf_bytes(pdf_bytes, "large.pdf", max_size_mb=0.00001)
 
+    # Test default 20 MB boundary message
+    dummy_large = b"%PDF" + b"0" * (21 * 1024 * 1024)
+    with pytest.raises(PDFValidationError, match="exceeds maximum allowed size of 20 MB"):
+        validate_pdf_bytes(dummy_large, "oversized_21mb.pdf")
+
 
 def test_pdf_page_count_validation():
-    """Verify PDFs with >50 pages are rejected."""
-    pdf_bytes = create_simple_pdf_bytes("Page limit test", page_count=5)
-    with pytest.raises(PDFValidationError, match="exceeds the limit of 3 pages"):
-        validate_pdf_bytes(pdf_bytes, "many_pages.pdf", max_pages=3)
+    """Verify PDFs with >50 pages are rejected while <=50 pages are accepted."""
+    # 50 pages: accepted
+    pdf_50 = create_simple_pdf_bytes("Page 50 test", page_count=50)
+    assert validate_pdf_bytes(pdf_50, "fifty_pages.pdf") == 50
+
+    # 51 pages: rejected by default limit of 50
+    pdf_51 = create_simple_pdf_bytes("Page 51 test", page_count=51)
+    with pytest.raises(PDFValidationError, match="exceeds the limit of 50 pages"):
+        validate_pdf_bytes(pdf_51, "fifty_one_pages.pdf")
 
 
 def test_pdf_ingestion_report():
@@ -127,7 +137,11 @@ def test_paper_filtering():
         ingest_pdf(p2_path, vector_store=vstore, paper_name="transformer.pdf")
 
         text_retriever = TextRetriever(vector_store=vstore)
-        nodes = ResearchAgentNodes(text_retriever=text_retriever)
+        from unittest.mock import MagicMock
+        mock_llm = MagicMock()
+        mock_llm.is_configured.return_value = True
+        mock_llm.generate_text.return_value = "ConvLSTM details [E1]."
+        nodes = ResearchAgentNodes(text_retriever=text_retriever, llm_client=mock_llm)
         agent = ResearchAgent(nodes=nodes)
 
         # Query with paper_filter="convlstm.pdf"
